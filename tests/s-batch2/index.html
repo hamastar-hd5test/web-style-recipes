@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>場景畫風實測 S16 S18 S19 S23 S28 S29 S33</title>
+<style>
+  :root { --bg:#141414; --fg:#eee; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--fg); font:14px/1.4 -apple-system,"PingFang TC",sans-serif; padding:16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; max-width:1040px; margin:auto; }
+  figure { display:flex; flex-direction:column; gap:6px; }
+  canvas, pre { width:100%; aspect-ratio:4/5; border-radius:8px; display:block; }
+  pre { background:#020a04; color:#38f27a; font:6.4px/5.1px ui-monospace,Menlo,monospace; letter-spacing:1.1px; overflow:hidden; padding:4px; white-space:pre; }
+  figcaption { opacity:.8; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <figure><pre id="ascii"></pre><figcaption>S23 ASCII 字元</figcaption></figure>
+  <figure><canvas id="led" width="480" height="600"></canvas><figcaption>S18 LED 點陣看板</figcaption></figure>
+  <figure><canvas id="stitch" width="480" height="600"></canvas><figcaption>S16 十字繡</figcaption></figure>
+  <figure><canvas id="puppet" width="480" height="600"></canvas><figcaption>S19 皮影</figcaption></figure>
+  <figure><canvas id="holo" width="480" height="600"></canvas><figcaption>S28 全息投影</figcaption></figure>
+  <figure><canvas id="blue" width="480" height="600"></canvas><figcaption>S29 藍圖</figcaption></figure>
+  <figure><canvas id="mosaic" width="480" height="600"></canvas><figcaption>S33 馬賽克磁磚</figcaption></figure>
+</div>
+<script>
+// 一份場景幾何（低解析色格），四種畫風各自換皮。t 秒 → 同一張畫面。
+const W = 48, H = 60, DUR = 4;
+const SKY = [40, 70, 120], SUN = [255, 200, 60], HILL = [60, 150, 70], HOUSE = [200, 90, 60], ROOF = [120, 40, 40], BALL = [240, 80, 40];
+
+function sceneGrid(t) {
+  const g = []; g.id = [];
+  const bx = 6 + ((t / DUR) % 1) * 36, by = 40 - Math.abs(Math.sin(t * Math.PI * 1.5)) * 10;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let c = SKY.map(v => v + y * 1.2), id = 'sky';
+    if ((x - 36) ** 2 + (y - 12) ** 2 < 30) c = SUN, id = 'sun';
+    const hill = 44 + Math.sin(x / 7) * 3;
+    if (y > hill) c = HILL, id = 'hill';
+    if (x > 8 && x < 20 && y > 34 && y <= hill + 1) c = HOUSE, id = 'house';
+    if (y > 27 && y <= 34 && Math.abs(x - 14) < (y - 27) * 1.1) c = ROOF, id = 'roof';
+    if ((x - bx) ** 2 + (y - by) ** 2 < 7) c = BALL, id = 'ball';
+    g.push(c); g.id.push(id);
+  }
+  return g;
+}
+const luma = ([r, g, b]) => (0.3 * r + 0.59 * g + 0.11 * b) / 255;
+
+// 照物件給字元、邊界一律描成實心字元：照原色亮度換字元時，天空、房子、草地都落在中間調，整張變成同一種符號（2026-11-22 實測）。
+const FILL = { sky: ' ', sun: '@', hill: '.', house: ':', roof: '=', ball: '%' };
+function ascii(g) {
+  const id = (x, y) => g.id[Math.max(0, Math.min(H - 1, y)) * W + Math.max(0, Math.min(W - 1, x))];
+  let s = '> ASCII_ART\n';
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const k = id(x, y), edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => id(x + dx, y + dy) !== k);
+      s += edge && k !== 'sky' ? '#' : FILL[k];
+    }
+    s += '\n';
+  }
+  document.getElementById('ascii').textContent = s;
+}
+
+function led(g) {
+  const c = document.getElementById('led').getContext('2d'), s = 10;
+  c.fillStyle = '#000'; c.fillRect(0, 0, 480, 600);
+  for (let i = 0; i < g.length; i++) {
+    const x = i % W, y = (i / W) | 0, [r, gg, b] = g[i], k = luma(g[i]);
+    const on = k > 0.2;
+    c.shadowBlur = on ? 6 : 0; c.shadowColor = `rgb(${r},${gg},${b})`;
+    c.fillStyle = on ? `rgb(${r},${gg},${b})` : '#1c1c1c';
+    c.beginPath(); c.arc(x * s + s / 2, y * s + s / 2, s * 0.36, 0, 7); c.fill();
+  }
+  c.shadowBlur = 0;
+}
+
+function stitch(g) {
+  const c = document.getElementById('stitch').getContext('2d'), s = 10;
+  c.fillStyle = '#f2ecdf'; c.fillRect(0, 0, 480, 600);
+  c.fillStyle = '#d9d1bf';
+  for (let y = 0; y <= H; y++) for (let x = 0; x <= W; x++) c.fillRect(x * s - 1, y * s - 1, 2, 2);
+  c.lineCap = 'round';
+  for (let i = 0; i < g.length; i++) {
+    const x = (i % W) * s, y = ((i / W) | 0) * s, [r, gg, b] = g[i];
+    if (g.id[i] === 'sky') continue; // 背景不繡，留出繡布
+    const col = `rgb(${r},${gg},${b})`, dark = `rgb(${r * .6 | 0},${gg * .6 | 0},${b * .6 | 0})`;
+    for (const [w, st, off] of [[3.2, dark, 0.6], [2.4, col, 0]]) {
+      c.lineWidth = w; c.strokeStyle = st;
+      c.beginPath(); c.moveTo(x + 2 + off, y + 2 + off); c.lineTo(x + 8 + off, y + 8 + off);
+      c.moveTo(x + 8 + off, y + 2 + off); c.lineTo(x + 2 + off, y + 8 + off); c.stroke();
+    }
+  }
+}
+
+function puppet(t) {
+  const c = document.getElementById('puppet').getContext('2d');
+  const grd = c.createRadialGradient(240, 260, 40, 240, 300, 380);
+  grd.addColorStop(0, '#ffcf7a'); grd.addColorStop(0.6, '#d9822b'); grd.addColorStop(1, '#3a1a08');
+  c.fillStyle = grd; c.fillRect(0, 0, 480, 600);
+  c.fillStyle = '#120a05'; c.strokeStyle = '#120a05';
+  c.beginPath(); c.moveTo(0, 470); for (let x = 0; x <= 480; x += 20) c.lineTo(x, 440 + Math.sin(x / 70) * 30); c.lineTo(480, 600); c.lineTo(0, 600); c.fill();
+  c.fillRect(90, 340, 120, 110); c.beginPath(); c.moveTo(70, 345); c.lineTo(150, 270); c.lineTo(230, 345); c.fill();
+  c.fillStyle = '#d9822b'; for (let i = 0; i < 3; i++) c.fillRect(110 + i * 32, 370, 18, 18); // 鏤空窗
+  c.fillStyle = '#120a05';
+  const bx = 60 + ((t / DUR) % 1) * 360, by = 400 - Math.abs(Math.sin(t * Math.PI * 1.5)) * 100;
+  c.beginPath(); c.arc(bx, by, 18, 0, 7); c.fill();
+  c.lineWidth = 2; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + 30, 600); c.stroke(); // 支桿
+  c.fillStyle = '#e8a84a'; c.beginPath(); c.arc(bx, by, 3, 0, 7); c.fill();             // 鉚釘
+}
+
+// 物件邊界：鄰格是不同物件就算邊。S28、S29 都從這裡畫線。
+function edges(g) {
+  const out = [], id = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 'sky' : g.id[y * W + x];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const k = id(x, y); if (k === 'sky') continue;
+    out.push([x, y, k, [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => id(x + dx, y + dy) !== k)]);
+  }
+  return out;
+}
+
+function holo(g, t) {
+  const c = document.getElementById('holo').getContext('2d'), s = 10;
+  c.fillStyle = '#03080f'; c.fillRect(0, 0, 480, 600);
+  const glitch = (Math.floor(t * 12) % 23 === 0) ? 3 : 0;            // 偶爾斷訊一格
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, y, k, e] of edges(g)) {
+    if (k === 'hill' && !e) continue;
+    c.fillStyle = e ? 'rgba(90,230,255,.9)' : 'rgba(60,180,255,.10)';   // 邊最亮、內部淡
+    c.fillRect(x * s + glitch, y * s, s - 1, s - 1);
+  }
+  const scan = 600 - ((t * 140) % 600);
+  const sg = c.createLinearGradient(0, scan - 40, 0, scan); sg.addColorStop(0, 'rgba(90,230,255,0)'); sg.addColorStop(1, 'rgba(90,230,255,.25)');
+  c.fillStyle = sg; c.fillRect(0, scan - 40, 480, 40);
+  c.globalCompositeOperation = 'source-over';
+  c.fillStyle = 'rgba(0,0,0,.35)'; for (let y = 0; y < 600; y += 4) c.fillRect(0, y, 480, 1);   // 掃描線
+}
+
+function blueprint(g) {
+  const c = document.getElementById('blue').getContext('2d'), s = 10;
+  c.fillStyle = '#123a6b'; c.fillRect(0, 0, 480, 600);
+  c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 1;
+  for (let i = 0; i <= 480; i += 20) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, 600); c.stroke(); }
+  for (let i = 0; i <= 600; i += 20) { c.beginPath(); c.moveTo(0, i); c.lineTo(480, i); c.stroke(); }
+  c.fillStyle = '#e8f1ff';
+  for (const [x, y, , e] of edges(g)) if (e) c.fillRect(x * s + 3, y * s + 3, 4, 4);
+  c.strokeStyle = '#e8f1ff'; c.lineWidth = 1.2; c.font = '13px ui-monospace,Menlo,monospace'; c.fillStyle = '#e8f1ff';
+  const dim = (x0, x1, y, label) => { c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.moveTo(x0, y - 5); c.lineTo(x0, y + 5); c.moveTo(x1, y - 5); c.lineTo(x1, y + 5); c.stroke(); c.fillText(label, (x0 + x1) / 2 - 14, y - 6); };
+  dim(90, 200, 520, '1100');                                        // 房子寬的尺寸標註
+  c.fillText('A-01  ELEV.', 330, 580);
+}
+
+// S33：每格一顆六角磁磚，奇數列錯半格，灰縫是底色；色差用固定種子，每格每次都一樣。
+function mosaic(g) {
+  const c = document.getElementById('mosaic').getContext('2d'), s = 10;
+  c.fillStyle = '#b9b0a2'; c.fillRect(0, 0, 480, 600); // 淺色水泥縫：和 S18 LED 的黑縫分開
+  for (let i = 0; i < g.length; i++) {
+    const x = i % W, y = (i / W) | 0, j = 1 + (((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.12 - 0.06);
+    const [r, gg, b] = g[i].map(v => Math.min(255, v * j | 0));
+    const cx = x * s + s / 2 + (y % 2 ? s / 2 : 0), cy = y * s + s / 2;
+    c.fillStyle = `rgb(${r},${gg},${b})`;
+    c.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k + Math.PI / 6; c.lineTo(cx + Math.cos(a) * 4.6, cy + Math.sin(a) * 4.6); } c.fill();
+  }
+}
+
+window.DUR = DUR;
+window.render = t => { const g = sceneGrid(t); ascii(g); led(g); stitch(g); puppet(t); holo(g, t); blueprint(g); mosaic(g); };
+window.READY = true;
+const m = location.hash.match(/t=([\d.]+)/);
+if (m) render(+m[1]);
+else { const s0 = performance.now(); (function loop() { render(((performance.now() - s0) / 1000) % DUR); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>

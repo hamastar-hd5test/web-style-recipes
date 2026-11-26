@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>深夜書桌風格包</title>
+<style>
+  :root { --bg:#f3f1ec; --ink:#1d1d1f; --muted:#6b6b70; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141416; --ink:#ececef; --muted:#9a9aa2; } }
+  :root[data-theme="dark"] { --bg:#141416; --ink:#ececef; --muted:#9a9aa2; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:15px/1.6 system-ui,-apple-system,"PingFang TC",sans-serif; padding:32px 16px 48px; }
+  main { max-width:1200px; margin:0 auto; }
+  h1 { font-size:22px; margin-bottom:4px; }
+  .sub { color:var(--muted); margin-bottom:24px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr)); gap:20px; }
+  figure { display:flex; flex-direction:column; gap:8px; }
+  svg { width:100%; height:auto; aspect-ratio:16/9; display:block; border-radius:6px; }
+  figcaption b { display:block; }
+  figcaption span { color:var(--muted); font-size:13px; }
+
+  /* ---------- S05 黑板粉筆：線照順序畫出，煙重描 ---------- */
+  .chalk .ln { fill:none; stroke:#f2f0e6; stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray:1; stroke-dashoffset:1; animation:chalkDraw 9s linear infinite; animation-delay:calc(var(--i) * .22s); }
+  .chalk .accent { stroke:#f6dc6a; }
+  .chalk .occ { fill:#22382d; opacity:0; animation:chalkOcc 9s linear infinite; animation-delay:calc(var(--i) * .22s); }
+  @keyframes chalkOcc { 0%,25%{opacity:0} 40%,88%{opacity:1} 96%,100%{opacity:0} }
+  .chalk .steam .ln { animation:chalkSteam 3s ease-in-out infinite; animation-delay:calc(var(--i) * .4s); }
+  @keyframes chalkDraw { 0%{stroke-dashoffset:1;opacity:1} 40%,88%{stroke-dashoffset:0;opacity:1} 96%,100%{stroke-dashoffset:0;opacity:0} }
+  @keyframes chalkSteam { 0%{stroke-dashoffset:1;opacity:.9} 60%{stroke-dashoffset:0;opacity:.9} 100%{stroke-dashoffset:0;opacity:0} }
+
+  /* ---------- S01 發光線稿：只動亮度 ---------- */
+  .glow .ln { fill:none; stroke:#cfd6ff; stroke-width:1.6; stroke-opacity:.75; }
+  .glow .laptop .ln { stroke:#ff3b3b; stroke-opacity:1; stroke-width:2.2; }
+  .glow .occ { fill:#000; }
+  .glow .screenfill { fill:url(#goldScreen); animation:breathe 5s ease-in-out infinite; }
+  .glow .lit { fill:#ffcf6b; opacity:.15; animation:winOn 6s steps(1) infinite; animation-delay:calc(var(--i) * -.37s); }
+  .glow .halo { animation:breathe 5s ease-in-out infinite; }
+  .glow .steam .ln { stroke:#f4f1ff; stroke-opacity:.5; stroke-dasharray:.25 .75; animation:steamDrift 3s linear infinite; }
+  @keyframes breathe { 0%,100%{opacity:.7} 50%{opacity:1} }
+  @keyframes winOn { 0%{opacity:.15} 30%{opacity:1} 70%{opacity:.6} }
+  @keyframes steamDrift { to { stroke-dashoffset:-1; } }
+
+  /* ---------- A09 Riso：兩色疊印、套色抖動 ---------- */
+  .riso .ink { mix-blend-mode:multiply; }
+  .riso .pink * { fill:url(#dotPink); stroke:#ff48b0; }
+  .riso .blue * { fill:url(#dotBlue); stroke:#0075bf; }
+  .riso .solidPink { fill:#ff48b0 !important; }
+  .riso .solidBlue { fill:#0075bf !important; }
+  .riso .noFill { fill:none !important; }
+  .riso .pink { animation:misreg 1.2s steps(1) infinite; }
+  @keyframes misreg { 0%{transform:translate(5px,-3px)} 25%{transform:translate(7px,-2px)} 50%{transform:translate(4px,-4px)} 75%{transform:translate(6px,-1px)} }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chalk .ln, .chalk .steam .ln { animation:none; stroke-dashoffset:0; }
+    .glow .screenfill, .glow .lit, .glow .halo, .glow .steam .ln, .riso .pink { animation:none; }
+    .glow .lit { opacity:.9; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>深夜書桌風格包</h1>
+  <p class="sub">同一份場景幾何，三組畫風皮。16:9，9 秒內循環。</p>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+// ---- 錨點：唯一一份場景幾何（1600×900） ----
+const W = 1600, H = 900;
+const rect = (x, y, w, h) => `M${x} ${y}H${x + w}V${y + h}H${x}Z`;
+const SCENE = {
+  window: { frame: rect(200, 60, 1200, 400), mullions: 'M800 60V460M200 260H1400' },
+  buildings: [[230,150,250],[390,110,330],[510,170,200],[690,130,290],[830,160,350],[1000,120,230],[1130,180,300],[1310,80,190]]
+    .map(([x, w, h]) => ({ x, w, h, d: rect(x, 460 - h, w, h) })),
+  desk: 'M0 600H1600',
+  laptop: { screen: rect(380, 330, 560, 330), inner: rect(405, 355, 510, 280), base: 'M330 700H990L940 660H380Z' },
+  cup: { body: 'M1120 560H1270L1255 700H1135Z', handle: 'M1265 590C1330 590 1330 660 1258 665', saucer: 'M1080 712C1130 690 1260 690 1310 712C1260 730 1130 730 1080 712Z' },
+  steam: ['M1160 545C1140 510 1180 480 1160 440S1180 380 1165 350', 'M1195 545C1215 505 1175 470 1200 430S1180 370 1200 330', 'M1230 545C1210 515 1250 485 1230 450S1245 395 1232 365'],
+};
+// 窗內亮燈：每棟幾格，位置固定（不隨機，三種畫風同一份）
+const LIT = SCENE.buildings.flatMap((b, bi) => [0, 1, 2].filter(k => (bi + k) % 2 === 0).map(k =>
+  rect(b.x + 18 + k * Math.max(24, (b.w - 50) / 3), 460 - b.h + 30 + ((bi * 37 + k * 53) % Math.max(40, b.h - 70)), 16, 20)));
+
+const ns = 'http://www.w3.org/2000/svg';
+const p = (d, cls = 'ln', i = 0, extra = '') => `<path d="${d}" class="${cls}" pathLength="1" style="--i:${i}" ${extra}/>`;
+const clip = `<clipPath id="CLIP"><path d="${SCENE.window.frame}"/></clipPath>`;
+
+function chalk() {
+  let i = 0;
+  return `<defs>${clip.replace('CLIP','cChalk')}
+    <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter>
+    <filter id="board"><feTurbulence type="fractalNoise" baseFrequency=".012" numOctaves="3" seed="9"/><feColorMatrix values="0 0 0 0 .7  0 0 0 0 .8  0 0 0 0 .75  0 0 0 .10 0"/></filter></defs>
+    <rect width="${W}" height="${H}" fill="#22382d"/><rect width="${W}" height="${H}" filter="url(#board)"/>
+    <g filter="url(#rough)" class="chalk">
+      ${p(SCENE.desk, 'ln', i++)}
+      <g clip-path="url(#cChalk)">${SCENE.buildings.map(b => p(b.d, 'ln', i++)).join('')}${LIT.map(d => p(d, 'ln accent', i + 2)).join('')}</g>
+      ${p(SCENE.window.frame, 'ln', i++)}${p(SCENE.window.mullions, 'ln', i++)}
+      <path d="${SCENE.laptop.screen}" class="occ" style="--i:${i}"/><path d="${SCENE.laptop.base}" class="occ" style="--i:${i}"/>
+      ${p(SCENE.laptop.screen, 'ln', i++)}${p(SCENE.laptop.inner, 'ln accent', i++)}${p(SCENE.laptop.base, 'ln', i++)}
+      ${p(SCENE.cup.saucer, 'ln', i++)}${p(SCENE.cup.body, 'ln', i++)}${p(SCENE.cup.handle, 'ln', i++)}
+      <g class="steam">${SCENE.steam.map((d, k) => p(d, 'ln', k)).join('')}</g>
+    </g>`;
+}
+
+function glow() {
+  return `<defs>${clip.replace('CLIP','cGlow')}
+    <filter id="neon" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" result="b1"/><feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="b2"/>
+      <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <radialGradient id="goldScreen" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#ffcf6b" stop-opacity=".55"/><stop offset="1" stop-color="#ffcf6b" stop-opacity=".05"/></radialGradient></defs>
+    <rect width="${W}" height="${H}" fill="#000"/>
+    <g class="glow" filter="url(#neon)">
+      <g clip-path="url(#cGlow)">${SCENE.buildings.map(b => p(b.d)).join('')}${LIT.map((d, k) => `<path d="${d}" class="lit" style="--i:${k}"/>`).join('')}</g>
+      ${p(SCENE.window.frame)}${p(SCENE.window.mullions)}${p(SCENE.desk)}
+      <g class="laptop"><path d="${SCENE.laptop.screen}" class="occ"/><path d="${SCENE.laptop.base}" class="occ"/>
+        <path d="${SCENE.laptop.inner}" class="screenfill"/>${p(SCENE.laptop.screen)}${p(SCENE.laptop.inner)}${p(SCENE.laptop.base)}</g>
+      <path d="${SCENE.cup.body}" class="occ"/>${p(SCENE.cup.saucer)}${p(SCENE.cup.body)}${p(SCENE.cup.handle)}
+      <g class="steam">${SCENE.steam.map(d => p(d)).join('')}</g>
+    </g>`;
+}
+
+function riso() {
+  // 藍版：窗、城市、桌；粉版：筆電、杯子、煙、窗燈。重疊處疊出紫。
+  return `<defs>${clip.replace('CLIP','cRiso')}
+    <pattern id="dotPink" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(15)"><circle cx="4.5" cy="4.5" r="2.6" fill="#ff48b0"/></pattern>
+    <pattern id="dotBlue" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(75)"><circle cx="4" cy="4" r="2.2" fill="#0075bf"/></pattern>
+    <filter id="paper"><feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .45  0 0 0 .18 0"/></filter></defs>
+    <rect width="${W}" height="${H}" fill="#f4efe4"/>
+    <g class="riso">
+      <g class="ink blue" stroke-width="5">
+        <path d="M0 600H1600V900H0Z"/>
+        <g clip-path="url(#cRiso)"><path d="${SCENE.window.frame}"/>${SCENE.buildings.map(b => `<path d="${b.d}" class="solidBlue"/>`).join('')}</g>
+        <path d="${SCENE.window.frame}" class="noFill"/><path d="${SCENE.window.mullions}" class="noFill"/>
+      </g>
+      <g class="ink pink" stroke-width="5">
+        <g clip-path="url(#cRiso)">${LIT.map(d => `<path d="${d}" class="solidPink"/>`).join('')}</g>
+        <path d="${SCENE.laptop.screen}"/><path d="${SCENE.laptop.inner}" class="solidPink" opacity=".75"/><path d="${SCENE.laptop.base}" class="solidPink"/>
+        <path d="${SCENE.cup.saucer}"/><path d="${SCENE.cup.body}" class="solidPink"/><path d="${SCENE.cup.handle}" class="noFill" stroke-width="12"/>
+        ${SCENE.steam.map(d => `<path d="${d}" class="noFill" stroke-width="7" stroke-linecap="round"/>`).join('')}
+      </g>
+    </g>
+    <rect width="${W}" height="${H}" filter="url(#paper)"/>`;
+}
+
+const PACK = [
+  { id: '01-chalkboard', name: 'S05 黑板粉筆', note: '線照書寫順序畫出，畫完只剩煙在重描', build: chalk },
+  { id: '02-glow-sketch', name: 'S01 發光線稿', note: '只動亮度：螢幕呼吸、窗燈輪流亮', build: glow },
+  { id: '03-riso', name: 'A09 Riso 印刷（Hato Press 一路的雙色孔版）', note: '粉藍兩色疊出紫，粉色版每格微偏', build: riso },
+];
+document.getElementById('grid').innerHTML = PACK.map(s =>
+  `<figure id="${s.id}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${s.name}">${s.build()}</svg>
+   <figcaption><b>${s.name}</b><span>${s.note}</span></figcaption></figure>`).join('');
+</script>
+</body>
+</html>
